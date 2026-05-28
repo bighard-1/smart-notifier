@@ -7,166 +7,643 @@
   <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/element-plus"></script>
+  <style>
+    :root {
+      --bg-body: #0f172a;
+      --bg-card: #1e293b;
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--bg-body);
+      color: var(--text-primary);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    [v-cloak] {
+      display: none;
+    }
+
+    .app-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    .app-header {
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .app-title {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .auth-card,
+    .panel-card,
+    .task-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: 8px;
+    }
+
+    .auth-wrap {
+      min-height: calc(100vh - 100px);
+      display: grid;
+      place-items: center;
+    }
+
+    .auth-card {
+      width: min(460px, 100%);
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .toolbar-left,
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-card {
+      margin-bottom: 20px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 20px;
+    }
+
+    .form-grid .full-row {
+      grid-column: 1 / -1;
+    }
+
+    .task-card {
+      height: 100%;
+    }
+
+    .task-card .el-card__body {
+      height: 100%;
+    }
+
+    .task-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .task-id {
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .task-content {
+      margin: 4px 0 0;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .task-meta {
+      display: grid;
+      gap: 9px;
+      margin: 0;
+    }
+
+    .meta-line {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      gap: 8px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .meta-label {
+      color: var(--text-secondary);
+    }
+
+    .meta-value {
+      color: var(--text-primary);
+      overflow-wrap: anywhere;
+    }
+
+    .task-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .empty-state {
+      padding: 42px 0;
+      border: 1px dashed var(--border-color);
+      border-radius: 8px;
+      background: rgba(30, 41, 59, 0.55);
+    }
+
+    .el-card {
+      --el-card-bg-color: var(--bg-card);
+      --el-card-border-color: var(--border-color);
+      --el-card-padding: 18px;
+    }
+
+    .el-card__header {
+      color: var(--text-primary);
+      border-bottom-color: var(--border-color);
+      font-weight: 700;
+    }
+
+    .el-form-item__label,
+    .el-radio,
+    .el-dialog__title {
+      color: var(--text-primary);
+    }
+
+    .el-input__wrapper,
+    .el-select__wrapper {
+      background: #0f172a;
+      border: 1px solid var(--border-color);
+      box-shadow: none;
+    }
+
+    .el-input__inner,
+    .el-select__placeholder {
+      color: var(--text-primary);
+    }
+
+    .el-input__inner::placeholder {
+      color: var(--text-secondary);
+    }
+
+    .el-radio__label {
+      color: var(--text-primary);
+    }
+
+    .el-dialog {
+      --el-dialog-bg-color: var(--bg-card);
+      --el-dialog-border-radius: 8px;
+      border: 1px solid var(--border-color);
+    }
+
+    .el-dialog__body {
+      color: var(--text-primary);
+    }
+
+    @media (max-width: 720px) {
+      .app-header {
+        height: auto;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stats-bar {
+        justify-content: flex-start;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-<div id="app" style="max-width:1100px;margin:24px auto;padding:12px;">
-  <h2>Smart-Notifier 管理端</h2>
+<div id="app" v-cloak>
+  <main class="app-shell">
+    <header class="app-header">
+      <h1 class="app-title">Smart-Notifier</h1>
+      <div v-if="authed" class="stats-bar">
+        <el-tag effect="dark" type="warning">今日待办 {{ todayPending }}</el-tag>
+        <el-tag effect="dark" type="success">本周完成 {{ weekCompleted }}</el-tag>
+        <el-tag effect="dark" type="info">全部任务 {{ tasks.length }}</el-tag>
+      </div>
+    </header>
 
-  <el-card v-if="!authed" style="max-width:460px;margin:30px auto;">
-    <template #header>登录</template>
-    <el-form label-width="90px">
-      <el-form-item label="用户名"><el-input v-model="login.username"/></el-form-item>
-      <el-form-item label="密码"><el-input v-model="login.password" type="password" show-password/></el-form-item>
-      <el-form-item><el-button type="primary" @click="doLogin">登录</el-button></el-form-item>
-    </el-form>
-  </el-card>
-
-  <div v-else>
-    <el-form :inline="true" @submit.prevent>
-      <el-form-item label="Chat ID"><el-input v-model="chatId" placeholder="可选" style="width:180px"/></el-form-item>
-      <el-form-item>
-        <el-select v-model="statusFilter" style="width:140px">
-          <el-option label="全部" value=""/><el-option label="待办" value="pending"/><el-option label="完成" value="completed"/>
-        </el-select>
-      </el-form-item>
-      <el-form-item><el-button type="primary" @click="load">刷新</el-button></el-form-item>
-      <el-form-item><el-button @click="logout">退出</el-button></el-form-item>
-    </el-form>
-
-    <el-card>
-      <template #header>新建任务</template>
-      <el-form label-width="120px">
-        <el-form-item label="目标 Chat ID"><el-input v-model="form.chat_id"/></el-form-item>
-        <el-form-item label="内容"><el-input v-model="form.content"/></el-form-item>
-        <el-form-item label="备注"><el-input v-model="form.remarks"/></el-form-item>
-        <el-form-item label="提醒类型">
-          <el-radio-group v-model="form.is_recurring">
-            <el-radio :value="false">一次性</el-radio>
-            <el-radio :value="true">周期循环</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item v-if="!form.is_recurring" label="提醒时间"><el-input v-model="form.once_time" placeholder="2026-05-04 10:00"/></el-form-item>
-
-        <template v-else>
-          <el-form-item label="循环方式">
-            <el-radio-group v-model="form.recurring_mode">
-              <el-radio value="weekly">每周</el-radio>
-              <el-radio value="monthly">每月</el-radio>
-              <el-radio value="quarterly">每季度</el-radio>
-              <el-radio value="yearly">每年</el-radio>
-              <el-radio value="interval_days">每隔N天</el-radio>
-            </el-radio-group>
+    <section v-if="!authed" class="auth-wrap">
+      <el-card class="auth-card">
+        <template #header>登录</template>
+        <el-form label-width="90px">
+          <el-form-item label="用户名">
+            <el-input v-model="login.username" autocomplete="username" />
           </el-form-item>
-          <el-form-item label="时间(HH:MM)"><el-input v-model="form.hhmm" style="width:160px"/></el-form-item>
-          <el-form-item v-if="form.recurring_mode==='weekly'" label="周几">
-            <el-select v-model="form.weekday" style="width:120px"><el-option label="一" value="1"/><el-option label="二" value="2"/><el-option label="三" value="3"/><el-option label="四" value="4"/><el-option label="五" value="5"/><el-option label="六" value="6"/><el-option label="日" value="7"/></el-select>
+          <el-form-item label="密码">
+            <el-input v-model="login.password" type="password" autocomplete="current-password" show-password />
           </el-form-item>
-          <el-form-item v-if="form.recurring_mode==='monthly' || form.recurring_mode==='quarterly'" label="日期(1-31)"><el-input v-model="form.month_day" style="width:120px"/></el-form-item>
-          <el-form-item v-if="form.recurring_mode==='yearly'" label="日期(MM-DD)"><el-input v-model="form.year_mmdd" style="width:140px"/></el-form-item>
-          <el-form-item v-if="form.recurring_mode==='interval_days'" label="间隔天数"><el-input v-model="form.interval_days" style="width:120px"/></el-form-item>
-        </template>
-        <el-form-item><el-button type="success" @click="createTask">创建</el-button></el-form-item>
-      </el-form>
-    </el-card>
-
-    <div style="margin-top:16px;display:grid;gap:12px;">
-      <el-card v-for="t in tasks" :key="t.id">
-        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-          <div>
-            <div><b>ID:</b> {{t.id}} | <b>ChatID:</b> {{t.chat_id}}</div>
-            <div><b>内容:</b> {{t.content}}</div>
-            <div><b>提醒时间:</b> {{t.trigger_time || '-'}} | <b>下次提醒:</b> {{t.next_run_time || '-'}}</div>
-            <div><b>循环规则:</b> {{t.rule_text || t.cron_expr || '-'}}</div>
-            <div><b>提醒类型:</b> {{t.reminder_type || (t.is_recurring?'周期':'一次性')}} | <b>状态:</b> {{t.status}}</div>
-          </div>
-          <div style="display:flex;gap:8px;align-items:flex-start;">
-            <el-button size="small" @click="openEdit(t)">✏️修改</el-button>
-            <el-button size="small" type="success" :disabled="t.status==='completed'" @click="markDone(t)">完成</el-button>
-            <el-button size="small" type="danger" @click="deleteTask(t)">删除</el-button>
-          </div>
-        </div>
+          <el-form-item>
+            <el-button type="primary" @click="doLogin">登录</el-button>
+          </el-form-item>
+        </el-form>
       </el-card>
-      <el-empty v-if="tasks.length===0" description="暂无任务" />
-    </div>
+    </section>
 
-    <el-dialog v-model="edit.visible" title="修改任务" width="560px">
-      <el-form label-width="110px">
-        <el-form-item label="内容"><el-input v-model="edit.form.content"/></el-form-item>
-        <el-form-item label="备注"><el-input v-model="edit.form.remarks"/></el-form-item>
-        <el-form-item label="提醒时间"><el-input v-model="edit.form.trigger_time" placeholder="2026-05-04 10:00"/></el-form-item>
-        <el-form-item label="循环规则"><el-input v-model="edit.form.cron_expr" placeholder="可留空"/></el-form-item>
-        <el-form-item label="状态"><el-select v-model="edit.form.status" style="width:160px"><el-option value="pending" label="pending"/><el-option value="completed" label="completed"/></el-select></el-form-item>
-      </el-form>
-      <template #footer><el-button @click="edit.visible=false">取消</el-button><el-button type="primary" @click="saveEdit">保存</el-button></template>
-    </el-dialog>
-  </div>
+    <section v-else>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <el-input v-model="chatId" placeholder="Chat ID 可选" style="width: 200px" />
+          <el-select v-model="statusFilter" style="width: 140px" placeholder="状态">
+            <el-option label="全部" value="" />
+            <el-option label="待办" value="pending" />
+            <el-option label="完成" value="completed" />
+          </el-select>
+        </div>
+        <div class="toolbar-right">
+          <el-button type="primary" @click="load">刷新</el-button>
+          <el-button @click="logout">退出</el-button>
+        </div>
+      </div>
+
+      <el-card class="panel-card">
+        <template #header>新建任务</template>
+        <el-form label-width="120px">
+          <div class="form-grid">
+            <el-form-item label="目标 Chat ID">
+              <el-input v-model="form.chat_id" />
+            </el-form-item>
+            <el-form-item label="提醒类型">
+              <el-radio-group v-model="form.is_recurring">
+                <el-radio :value="false">一次性</el-radio>
+                <el-radio :value="true">周期循环</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item class="full-row" label="内容">
+              <el-input v-model="form.content" />
+            </el-form-item>
+            <el-form-item class="full-row" label="备注">
+              <el-input v-model="form.remarks" />
+            </el-form-item>
+            <el-form-item v-if="!form.is_recurring" label="提醒时间">
+              <el-input v-model="form.once_time" placeholder="2026-05-04 10:00" />
+            </el-form-item>
+
+            <template v-else>
+              <el-form-item class="full-row" label="循环方式">
+                <el-radio-group v-model="form.recurring_mode">
+                  <el-radio value="weekly">每周</el-radio>
+                  <el-radio value="monthly">每月</el-radio>
+                  <el-radio value="quarterly">每季度</el-radio>
+                  <el-radio value="yearly">每年</el-radio>
+                  <el-radio value="interval_days">每隔N天</el-radio>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="时间">
+                <el-input v-model="form.hhmm" placeholder="09:30" />
+              </el-form-item>
+              <el-form-item v-if="form.recurring_mode==='weekly'" label="周几">
+                <el-select v-model="form.weekday">
+                  <el-option label="周一" value="1" />
+                  <el-option label="周二" value="2" />
+                  <el-option label="周三" value="3" />
+                  <el-option label="周四" value="4" />
+                  <el-option label="周五" value="5" />
+                  <el-option label="周六" value="6" />
+                  <el-option label="周日" value="7" />
+                </el-select>
+              </el-form-item>
+              <el-form-item v-if="form.recurring_mode==='monthly' || form.recurring_mode==='quarterly'" label="日期">
+                <el-input v-model="form.month_day" placeholder="1-31" />
+              </el-form-item>
+              <el-form-item v-if="form.recurring_mode==='yearly'" label="日期">
+                <el-input v-model="form.year_mmdd" placeholder="01-01" />
+              </el-form-item>
+              <el-form-item v-if="form.recurring_mode==='interval_days'" label="间隔天数">
+                <el-input v-model="form.interval_days" placeholder="3" />
+              </el-form-item>
+            </template>
+          </div>
+          <el-button type="success" @click="createTask">创建</el-button>
+        </el-form>
+      </el-card>
+
+      <el-row v-if="tasks.length" :gutter="20">
+        <el-col v-for="t in tasks" :key="t.id" :xs="24" :sm="12" :md="8" :lg="6">
+          <el-card class="task-card">
+            <div class="task-head">
+              <div>
+                <div class="task-id">ID {{ t.id }} · ChatID {{ t.chat_id }}</div>
+                <p class="task-content">{{ t.content || '未命名任务' }}</p>
+              </div>
+              <el-tag effect="dark" :type="t.status === 'completed' ? 'success' : 'warning'">
+                {{ t.status === 'completed' ? '完成' : '待办' }}
+              </el-tag>
+            </div>
+
+            <dl class="task-meta">
+              <div class="meta-line">
+                <dt class="meta-label">提醒类型</dt>
+                <dd class="meta-value">{{ t.reminder_type || (t.is_recurring ? '周期' : '一次性') }}</dd>
+              </div>
+              <div class="meta-line">
+                <dt class="meta-label">提醒时间</dt>
+                <dd class="meta-value">{{ t.trigger_time || '-' }}</dd>
+              </div>
+              <div class="meta-line">
+                <dt class="meta-label">下次提醒</dt>
+                <dd class="meta-value">{{ t.next_run_time || '-' }}</dd>
+              </div>
+              <div class="meta-line">
+                <dt class="meta-label">循环规则</dt>
+                <dd class="meta-value">{{ t.rule_text || t.cron_expr || '-' }}</dd>
+              </div>
+              <div class="meta-line">
+                <dt class="meta-label">备注</dt>
+                <dd class="meta-value">{{ t.remarks || '-' }}</dd>
+              </div>
+            </dl>
+
+            <div class="task-actions">
+              <el-button size="small" @click="openEdit(t)">修改</el-button>
+              <el-button size="small" type="success" :disabled="t.status==='completed'" @click="markDone(t)">完成</el-button>
+              <el-button size="small" type="danger" @click="deleteTask(t)">删除</el-button>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <el-empty v-else class="empty-state" description="暂无任务" />
+
+      <el-dialog v-model="edit.visible" title="修改任务" width="560px">
+        <el-form label-width="110px">
+          <el-form-item label="内容">
+            <el-input v-model="edit.form.content" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="edit.form.remarks" />
+          </el-form-item>
+          <el-form-item label="提醒时间">
+            <el-input v-model="edit.form.trigger_time" placeholder="2026-05-04 10:00" />
+          </el-form-item>
+          <el-form-item label="循环规则">
+            <el-input v-model="edit.form.cron_expr" placeholder="可留空" />
+          </el-form-item>
+          <el-form-item label="状态">
+            <el-select v-model="edit.form.status" style="width: 160px">
+              <el-option value="pending" label="pending" />
+              <el-option value="completed" label="completed" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="edit.visible=false">取消</el-button>
+          <el-button type="primary" @click="saveEdit">保存</el-button>
+        </template>
+      </el-dialog>
+    </section>
+  </main>
 </div>
 
 <script>
-const { createApp, ref } = Vue
+const { createApp, computed, ref } = Vue
+
 createApp({
   setup() {
     const auth = ref(localStorage.getItem('sn_basic_auth') || '')
     const authed = ref(!!auth.value)
-    const login = ref({username:'', password:''})
+    const login = ref({ username: '', password: '' })
     const chatId = ref('')
     const statusFilter = ref('')
     const tasks = ref([])
-    const form = ref({ chat_id:'', content:'', remarks:'', is_recurring:false, once_time:'', recurring_mode:'weekly', hhmm:'09:30', weekday:'1', month_day:'1', year_mmdd:'01-01', interval_days:'3' })
-    const edit = ref({ visible:false, taskId:null, form:{ content:'', remarks:'', trigger_time:'', cron_expr:'', status:'pending' } })
+    const form = ref({
+      chat_id: '',
+      content: '',
+      remarks: '',
+      is_recurring: false,
+      once_time: '',
+      recurring_mode: 'weekly',
+      hhmm: '09:30',
+      weekday: '1',
+      month_day: '1',
+      year_mmdd: '01-01',
+      interval_days: '3',
+    })
+    const edit = ref({
+      visible: false,
+      taskId: null,
+      form: { content: '', remarks: '', trigger_time: '', cron_expr: '', status: 'pending' },
+    })
 
-    const authFetch = (url, options={}) => fetch(url, Object.assign({}, options, { headers: Object.assign({}, options.headers || {}, auth.value ? { Authorization: `Basic ${auth.value}` } : {}) }))
-    const logout = () => { localStorage.removeItem('sn_basic_auth'); auth.value=''; authed.value=false }
+    const authFetch = (url, options = {}) => {
+      const headers = Object.assign(
+        {},
+        options.headers || {},
+        auth.value ? { Authorization: `Basic ${auth.value}` } : {}
+      )
+      return fetch(url, Object.assign({}, options, { headers }))
+    }
+
+    const logout = () => {
+      localStorage.removeItem('sn_basic_auth')
+      auth.value = ''
+      authed.value = false
+    }
+
+    const parseTaskDate = (value) => {
+      if (!value) return null
+      const normalized = String(value).includes('T') ? value : String(value).replace(' ', 'T')
+      const parsed = new Date(normalized)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+
+    const isSameDay = (a, b) =>
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
+
+    const isThisWeek = (date) => {
+      const now = new Date()
+      const start = new Date(now)
+      const day = start.getDay() || 7
+      start.setHours(0, 0, 0, 0)
+      start.setDate(start.getDate() - day + 1)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      return date >= start && date < end
+    }
+
+    const todayPending = computed(() => {
+      const today = new Date()
+      return tasks.value.filter((task) => {
+        const when = parseTaskDate(task.next_run_time || task.trigger_time)
+        return task.status === 'pending' && when && isSameDay(when, today)
+      }).length
+    })
+
+    const weekCompleted = computed(() =>
+      tasks.value.filter((task) => {
+        const created = parseTaskDate(task.created_at)
+        return task.status === 'completed' && created && isThisWeek(created)
+      }).length
+    )
 
     const doLogin = async () => {
       const token = btoa(`${login.value.username}:${login.value.password}`)
       const res = await fetch('/api/tasks', { headers: { Authorization: `Basic ${token}` } })
-      if (res.status===401) return ElementPlus.ElMessage.error('账号或密码错误')
-      auth.value = token; localStorage.setItem('sn_basic_auth', token); authed.value = true; await load()
+      if (res.status === 401) return ElementPlus.ElMessage.error('账号或密码错误')
+      auth.value = token
+      localStorage.setItem('sn_basic_auth', token)
+      authed.value = true
+      await load()
     }
 
     const recurringExpr = () => {
-      const [hh, mm] = form.value.hhmm.split(':'); if (!hh || !mm) throw new Error('时间格式为HH:MM')
-      const h=parseInt(hh,10), m=parseInt(mm,10), mode=form.value.recurring_mode
-      if (mode==='weekly') return `${m} ${h} * * ${form.value.weekday==='7'?0:form.value.weekday}`
-      if (mode==='monthly') return `${m} ${h} ${parseInt(form.value.month_day,10)} * *`
-      if (mode==='quarterly') return `${m} ${h} ${parseInt(form.value.month_day,10)} 1,4,7,10 *`
-      if (mode==='yearly') { const [mon,day]=form.value.year_mmdd.split('-'); return `${m} ${h} ${parseInt(day,10)} ${parseInt(mon,10)} *` }
-      if (mode==='interval_days') return `every_ndays:${parseInt(form.value.interval_days,10)}:${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`
+      const [hh, mm] = form.value.hhmm.split(':')
+      if (!hh || !mm) throw new Error('时间格式为HH:MM')
+      const h = parseInt(hh, 10)
+      const m = parseInt(mm, 10)
+      const mode = form.value.recurring_mode
+      if (mode === 'weekly') return `${m} ${h} * * ${form.value.weekday === '7' ? 0 : form.value.weekday}`
+      if (mode === 'monthly') return `${m} ${h} ${parseInt(form.value.month_day, 10)} * *`
+      if (mode === 'quarterly') return `${m} ${h} ${parseInt(form.value.month_day, 10)} 1,4,7,10 *`
+      if (mode === 'yearly') {
+        const [mon, day] = form.value.year_mmdd.split('-')
+        return `${m} ${h} ${parseInt(day, 10)} ${parseInt(mon, 10)} *`
+      }
+      if (mode === 'interval_days') {
+        return `every_ndays:${parseInt(form.value.interval_days, 10)}:${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      }
       throw new Error('未知循环方式')
     }
 
     const load = async () => {
-      const p = new URLSearchParams(); if (chatId.value) p.set('chat_id', chatId.value); if (statusFilter.value) p.set('status', statusFilter.value)
-      const res = await authFetch(`/api/tasks${p.toString()?`?${p.toString()}`:''}`)
-      if (res.status===401) return logout(); if (!res.ok) return ElementPlus.ElMessage.error('查询失败')
+      const p = new URLSearchParams()
+      if (chatId.value) p.set('chat_id', chatId.value)
+      if (statusFilter.value) p.set('status', statusFilter.value)
+      const res = await authFetch(`/api/tasks${p.toString() ? `?${p.toString()}` : ''}`)
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('查询失败')
       tasks.value = await res.json()
     }
 
     const createTask = async () => {
       try {
-        if (!form.value.chat_id || !form.value.content) return ElementPlus.ElMessage.error('请填写Chat ID和内容')
-        const payload = { content: form.value.content, remarks: form.value.remarks, is_recurring: form.value.is_recurring, trigger_time: form.value.is_recurring?null:form.value.once_time, cron_expr: form.value.is_recurring?recurringExpr():null, chat_id: form.value.chat_id }
-        const res = await authFetch('/api/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
-        if (res.status===401) return logout(); if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
-        await load(); ElementPlus.ElMessage.success('创建成功')
-      } catch(e){ ElementPlus.ElMessage.error(e.message || '创建失败') }
+        if (!form.value.chat_id || !form.value.content) {
+          return ElementPlus.ElMessage.error('请填写Chat ID和内容')
+        }
+        const payload = {
+          content: form.value.content,
+          remarks: form.value.remarks,
+          is_recurring: form.value.is_recurring,
+          trigger_time: form.value.is_recurring ? null : form.value.once_time,
+          cron_expr: form.value.is_recurring ? recurringExpr() : null,
+          chat_id: form.value.chat_id,
+        }
+        const res = await authFetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (res.status === 401) return logout()
+        if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+        await load()
+        ElementPlus.ElMessage.success('创建成功')
+      } catch (e) {
+        ElementPlus.ElMessage.error(e.message || '创建失败')
+      }
     }
 
-    const openEdit = (t) => { edit.value.taskId=t.id; edit.value.form={content:t.content||'',remarks:t.remarks||'',trigger_time:t.trigger_time||'',cron_expr:t.cron_expr||'',status:t.status||'pending'}; edit.value.visible=true }
+    const openEdit = (task) => {
+      edit.value.taskId = task.id
+      edit.value.form = {
+        content: task.content || '',
+        remarks: task.remarks || '',
+        trigger_time: task.trigger_time || '',
+        cron_expr: task.cron_expr || '',
+        status: task.status || 'pending',
+      }
+      edit.value.visible = true
+    }
+
     const saveEdit = async () => {
       const payload = { ...edit.value.form }
       if (!payload.trigger_time) delete payload.trigger_time
-      const res = await authFetch(`/api/tasks/${edit.value.taskId}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) })
-      if (res.status===401) return logout(); if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
-      edit.value.visible=false; await load(); ElementPlus.ElMessage.success('修改成功')
+      const res = await authFetch(`/api/tasks/${edit.value.taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      edit.value.visible = false
+      await load()
+      ElementPlus.ElMessage.success('修改成功')
     }
-    const markDone = async (t) => { const r=await authFetch(`/api/tasks/${t.id}/status`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'completed'})}); if(r.status===401)return logout(); if(!r.ok)return ElementPlus.ElMessage.error('更新失败'); await load() }
-    const deleteTask = async (t) => { const r=await authFetch(`/api/tasks/${t.id}`, {method:'DELETE'}); if(r.status===401)return logout(); if(!r.ok)return ElementPlus.ElMessage.error('删除失败'); await load() }
+
+    const markDone = async (task) => {
+      const res = await authFetch(`/api/tasks/${task.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('更新失败')
+      await load()
+    }
+
+    const deleteTask = async (task) => {
+      const res = await authFetch(`/api/tasks/${task.id}`, { method: 'DELETE' })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('删除失败')
+      await load()
+    }
 
     if (authed.value) load()
-    return { authed, login, doLogin, logout, chatId, statusFilter, tasks, form, createTask, load, edit, openEdit, saveEdit, markDone, deleteTask }
-  }
+
+    return {
+      authed,
+      login,
+      doLogin,
+      logout,
+      chatId,
+      statusFilter,
+      tasks,
+      todayPending,
+      weekCompleted,
+      form,
+      createTask,
+      load,
+      edit,
+      openEdit,
+      saveEdit,
+      markDone,
+      deleteTask,
+    }
+  },
 }).use(ElementPlus).mount('#app')
 </script>
 </body>
