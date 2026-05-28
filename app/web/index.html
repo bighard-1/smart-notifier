@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/element-plus"></script>
+  <script src="https://unpkg.com/@element-plus/icons-vue"></script>
   <style>
     :root {
       --bg-body: #0f172a;
@@ -67,7 +68,7 @@
       background: var(--bg-card);
       border: 1px solid var(--border-color);
       color: var(--text-primary);
-      border-radius: 8px;
+      border-radius: 12px;
     }
 
     .auth-wrap {
@@ -113,62 +114,94 @@
 
     .task-card {
       height: 100%;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .task-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     }
 
     .task-card .el-card__body {
       height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
-    .task-head {
+    .task-card-header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
       margin-bottom: 14px;
     }
 
-    .task-id {
-      color: var(--text-secondary);
-      font-size: 13px;
-      line-height: 1.5;
-    }
-
-    .task-content {
-      margin: 4px 0 0;
+    .task-title {
+      min-width: 0;
+      margin: 0;
       color: var(--text-primary);
       font-size: 16px;
       font-weight: 700;
-      line-height: 1.45;
-      word-break: break-word;
+      line-height: 1.4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
-    .task-meta {
-      display: grid;
-      gap: 9px;
+    .task-card-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .task-remark {
+      display: -webkit-box;
+      min-height: 38px;
       margin: 0;
-    }
-
-    .meta-line {
-      display: grid;
-      grid-template-columns: 78px minmax(0, 1fr);
-      gap: 8px;
+      overflow: hidden;
+      color: var(--text-secondary);
       font-size: 13px;
       line-height: 1.45;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
     }
 
-    .meta-label {
-      color: var(--text-secondary);
+    .countdown-box {
+      display: flex;
+      height: 40px;
+      align-items: center;
+      border-radius: 6px;
+      background: #0f172a;
+      padding: 0 10px;
     }
 
-    .meta-value {
-      color: var(--text-primary);
-      overflow-wrap: anywhere;
+    .countdown-text {
+      color: var(--countdown-color);
+      font-family: "Courier New", Courier, monospace;
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .countdown-text.is-urgent {
+      animation: pulse 1.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse {
+      from {
+        opacity: 0.6;
+      }
+      to {
+        opacity: 1;
+      }
     }
 
     .task-actions {
       display: flex;
       gap: 8px;
-      flex-wrap: wrap;
+      justify-content: flex-end;
       margin-top: 18px;
     }
 
@@ -353,44 +386,33 @@
 
       <el-row v-if="tasks.length" :gutter="20">
         <el-col v-for="t in tasks" :key="t.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <el-card class="task-card">
-            <div class="task-head">
-              <div>
-                <div class="task-id">ID {{ t.id }} · ChatID {{ t.chat_id }}</div>
-                <p class="task-content">{{ t.content || '未命名任务' }}</p>
-              </div>
-              <el-tag effect="dark" :type="t.status === 'completed' ? 'success' : 'warning'">
-                {{ t.status === 'completed' ? '完成' : '待办' }}
+          <el-card class="task-card" @click="openEdit(t)">
+            <div class="task-card-header">
+              <h3 class="task-title" :title="t.content || '未命名任务'">{{ t.content || '未命名任务' }}</h3>
+              <el-tag
+                :effect="t.is_recurring ? 'plain' : 'dark'"
+                :type="t.is_recurring ? 'info' : 'success'"
+              >
+                {{ t.is_recurring ? '周期(Cron)' : '单次' }}
               </el-tag>
             </div>
 
-            <dl class="task-meta">
-              <div class="meta-line">
-                <dt class="meta-label">提醒类型</dt>
-                <dd class="meta-value">{{ t.reminder_type || (t.is_recurring ? '周期' : '一次性') }}</dd>
+            <div class="task-card-body">
+              <p class="task-remark">{{ t.remarks || '无备注' }}</p>
+              <div class="countdown-box">
+                <span
+                  class="countdown-text"
+                  :class="{ 'is-urgent': getCountdownState(t.next_run_time || t.trigger_time).isUrgent }"
+                  :style="{ '--countdown-color': getCountdownState(t.next_run_time || t.trigger_time).color }"
+                >
+                  {{ getCountdownState(t.next_run_time || t.trigger_time).text }}
+                </span>
               </div>
-              <div class="meta-line">
-                <dt class="meta-label">提醒时间</dt>
-                <dd class="meta-value">{{ t.trigger_time || '-' }}</dd>
-              </div>
-              <div class="meta-line">
-                <dt class="meta-label">下次提醒</dt>
-                <dd class="meta-value">{{ t.next_run_time || '-' }}</dd>
-              </div>
-              <div class="meta-line">
-                <dt class="meta-label">循环规则</dt>
-                <dd class="meta-value">{{ t.rule_text || t.cron_expr || '-' }}</dd>
-              </div>
-              <div class="meta-line">
-                <dt class="meta-label">备注</dt>
-                <dd class="meta-value">{{ t.remarks || '-' }}</dd>
-              </div>
-            </dl>
+            </div>
 
             <div class="task-actions">
-              <el-button size="small" @click="openEdit(t)">修改</el-button>
-              <el-button size="small" type="success" :disabled="t.status==='completed'" @click="markDone(t)">完成</el-button>
-              <el-button size="small" type="danger" @click="deleteTask(t)">删除</el-button>
+              <el-button type="warning" circle :icon="Clock" @click.stop="openEdit(t)" />
+              <el-button type="success" circle :icon="Check" :disabled="t.status==='completed'" @click.stop="markDone(t)" />
             </div>
           </el-card>
         </el-col>
@@ -429,7 +451,8 @@
 </div>
 
 <script>
-const { createApp, computed, ref } = Vue
+const { createApp, computed, onUnmounted, ref } = Vue
+const { Check, Clock } = ElementPlusIconsVue
 
 createApp({
   setup() {
@@ -439,6 +462,10 @@ createApp({
     const chatId = ref('')
     const statusFilter = ref('')
     const tasks = ref([])
+    const now = ref(Date.now())
+    const timer = setInterval(() => {
+      now.value = Date.now()
+    }, 1000)
     const form = ref({
       chat_id: '',
       content: '',
@@ -456,6 +483,10 @@ createApp({
       visible: false,
       taskId: null,
       form: { content: '', remarks: '', trigger_time: '', cron_expr: '', status: 'pending' },
+    })
+
+    onUnmounted(() => {
+      clearInterval(timer)
     })
 
     const authFetch = (url, options = {}) => {
@@ -478,6 +509,42 @@ createApp({
       const normalized = String(value).includes('T') ? value : String(value).replace(' ', 'T')
       const parsed = new Date(normalized)
       return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+
+    const pad2 = (value) => String(value).padStart(2, '0')
+
+    const getCountdownState = (targetTime) => {
+      const target = parseTaskDate(targetTime)
+      if (!target) {
+        return { text: '-', color: '#94a3b8', isUrgent: false }
+      }
+
+      const diff = target.getTime() - now.value
+      const hour = 60 * 60 * 1000
+      const day = 24 * hour
+
+      if (diff <= 0) {
+        return { text: '已超时 / 触发中', color: '#ef4444', isUrgent: true }
+      }
+
+      if (diff <= day) {
+        const hours = Math.floor(diff / hour)
+        const minutes = Math.floor((diff % hour) / (60 * 1000))
+        const seconds = Math.floor((diff % (60 * 1000)) / 1000)
+        return {
+          text: `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`,
+          color: '#f97316',
+          isUrgent: true,
+        }
+      }
+
+      if (diff <= 7 * day) {
+        const days = Math.floor(diff / day)
+        const hours = Math.floor((diff % day) / hour)
+        return { text: `${days}天 ${hours}小时后`, color: '#3b82f6', isUrgent: false }
+      }
+
+      return { text: `${Math.ceil(diff / day)}天后`, color: '#22c55e', isUrgent: false }
     }
 
     const isSameDay = (a, b) =>
@@ -634,6 +701,9 @@ createApp({
       tasks,
       todayPending,
       weekCompleted,
+      getCountdownState,
+      Check,
+      Clock,
       form,
       createTask,
       load,
