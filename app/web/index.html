@@ -125,7 +125,6 @@
       height: 100%;
       min-height: 230px;
       transition: all 0.3s ease;
-      cursor: pointer;
     }
 
     .task-card:hover {
@@ -221,6 +220,18 @@
       justify-content: flex-end;
       margin-top: auto;
       padding-top: 16px;
+      min-height: 52px;
+      align-items: center;
+      border-top: 1px solid rgba(51, 65, 85, 0.72);
+      position: relative;
+      z-index: 2;
+    }
+
+    .task-action-btn {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      margin-left: 0 !important;
     }
 
     .empty-state {
@@ -425,7 +436,7 @@
 
       <el-row v-if="tasks.length" :gutter="20">
         <el-col v-for="t in tasks" :key="t.id" :xs="24" :sm="12" :md="8" :lg="6">
-          <el-card class="task-card" @click="openEdit(t)">
+          <el-card class="task-card">
             <div class="task-card-header">
               <h3 class="task-title" :title="t.content || '未命名任务'">{{ t.content || '未命名任务' }}</h3>
               <el-tag
@@ -450,8 +461,8 @@
             </div>
 
             <div class="task-actions">
-              <el-button type="warning" circle :icon="Clock" @click.stop="openEdit(t)" />
-              <el-button type="success" circle :icon="Check" :disabled="t.status==='completed'" @click.stop="markDone(t)" />
+              <el-button class="task-action-btn" type="warning" circle :icon="Clock" @click="openEdit(t)" />
+              <el-button class="task-action-btn" type="success" circle :icon="Check" :disabled="t.status==='completed'" @click="markDone(t)" />
             </div>
           </el-card>
         </el-col>
