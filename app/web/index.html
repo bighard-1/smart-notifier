@@ -215,12 +215,12 @@
     }
 
     .task-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
       margin-top: auto;
       padding-top: 16px;
-      min-height: 52px;
+      min-height: 56px;
       align-items: center;
       border-top: 1px solid rgba(51, 65, 85, 0.72);
       position: relative;
@@ -228,9 +228,9 @@
     }
 
     .task-action-btn {
-      width: 36px;
+      width: 100%;
+      min-width: 0;
       height: 36px;
-      flex: 0 0 36px;
       margin-left: 0 !important;
     }
 
@@ -452,17 +452,17 @@
               <div class="countdown-box">
                 <span
                   class="countdown-text"
-                  :class="{ 'is-urgent': getCountdownState(t.next_run_time || t.trigger_time).isUrgent }"
-                  :style="{ '--countdown-color': getCountdownState(t.next_run_time || t.trigger_time).color }"
+                  :class="{ 'is-urgent': getCountdownState(getTaskTargetTime(t)).isUrgent }"
+                  :style="{ '--countdown-color': getCountdownState(getTaskTargetTime(t)).color }"
                 >
-                  {{ getCountdownState(t.next_run_time || t.trigger_time).text }}
+                  {{ getCountdownState(getTaskTargetTime(t)).text }}
                 </span>
               </div>
             </div>
 
             <div class="task-actions">
-              <el-button class="task-action-btn" type="warning" circle :icon="Clock" @click="openEdit(t)" />
-              <el-button class="task-action-btn" type="success" circle :icon="Check" :disabled="t.status==='completed'" @click="markDone(t)" />
+              <el-button class="task-action-btn" type="warning" :icon="Clock" @click="openEdit(t)">编辑</el-button>
+              <el-button class="task-action-btn" type="success" :icon="Check" :disabled="t.status==='completed'" @click="markDone(t)">完成</el-button>
             </div>
           </el-card>
         </el-col>
@@ -562,6 +562,90 @@ createApp({
     }
 
     const pad2 = (value) => String(value).padStart(2, '0')
+
+    const buildLocalDate = (year, month, day, hour, minute) => {
+      const date = new Date(year, month - 1, day, hour, minute, 0, 0)
+      return Number.isNaN(date.getTime()) ? null : date
+    }
+
+    const daysInMonth = (year, month) => new Date(year, month, 0).getDate()
+
+    const nextFromCron = (cronExpr) => {
+      if (!cronExpr) return null
+
+      if (cronExpr.startsWith('every_ndays:')) {
+        const [, daysText, hourText, minuteText] = cronExpr.split(':')
+        const days = Number(daysText)
+        const hour = Number(hourText)
+        const minute = Number(minuteText)
+        if (!Number.isFinite(days) || !Number.isFinite(hour) || !Number.isFinite(minute)) return null
+
+        const candidate = new Date(now.value)
+        candidate.setHours(hour, minute, 0, 0)
+        if (candidate.getTime() <= now.value) {
+          candidate.setDate(candidate.getDate() + Math.max(1, days))
+        }
+        return candidate
+      }
+
+      const parts = cronExpr.trim().split(/\s+/)
+      if (parts.length !== 5) return null
+
+      const [minuteText, hourText, dayText, monthText, weekdayText] = parts
+      const minute = Number(minuteText)
+      const hour = Number(hourText)
+      if (!Number.isFinite(minute) || !Number.isFinite(hour)) return null
+
+      const nowDate = new Date(now.value)
+
+      if (dayText === '*' && monthText === '*' && weekdayText !== '*') {
+        const targetWeekday = Number(weekdayText)
+        if (!Number.isFinite(targetWeekday)) return null
+        const jsTarget = targetWeekday === 0 ? 0 : targetWeekday
+        const candidate = new Date(nowDate)
+        const diff = (jsTarget - candidate.getDay() + 7) % 7
+        candidate.setDate(candidate.getDate() + diff)
+        candidate.setHours(hour, minute, 0, 0)
+        if (candidate.getTime() <= now.value) candidate.setDate(candidate.getDate() + 7)
+        return candidate
+      }
+
+      if (dayText !== '*' && monthText === '*' && weekdayText === '*') {
+        const day = Number(dayText)
+        if (!Number.isFinite(day)) return null
+        for (let offset = 0; offset < 14; offset += 1) {
+          const probe = new Date(nowDate.getFullYear(), nowDate.getMonth() + offset, 1)
+          const month = probe.getMonth() + 1
+          const year = probe.getFullYear()
+          const safeDay = Math.min(day, daysInMonth(year, month))
+          const candidate = buildLocalDate(year, month, safeDay, hour, minute)
+          if (candidate && candidate.getTime() > now.value) return candidate
+        }
+      }
+
+      if (dayText !== '*' && monthText !== '*' && weekdayText === '*') {
+        const day = Number(dayText)
+        const months = monthText.split(',').map(Number).filter(Number.isFinite)
+        if (!Number.isFinite(day) || !months.length) return null
+        for (let yearOffset = 0; yearOffset <= 3; yearOffset += 1) {
+          const year = nowDate.getFullYear() + yearOffset
+          for (const month of months) {
+            const safeDay = Math.min(day, daysInMonth(year, month))
+            const candidate = buildLocalDate(year, month, safeDay, hour, minute)
+            if (candidate && candidate.getTime() > now.value) return candidate
+          }
+        }
+      }
+
+      return null
+    }
+
+    const getTaskTargetTime = (task) => {
+      if (task.next_run_time) return task.next_run_time
+      if (task.trigger_time) return task.trigger_time
+      const fallback = task.is_recurring ? nextFromCron(task.cron_expr) : null
+      return fallback ? fallback.toISOString() : null
+    }
 
     const getCountdownState = (targetTime) => {
       const target = parseTaskDate(targetTime)
@@ -757,6 +841,7 @@ createApp({
       todayPending,
       weekCompleted,
       knownChatIds,
+      getTaskTargetTime,
       getCountdownState,
       Check,
       Clock,
