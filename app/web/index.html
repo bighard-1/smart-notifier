@@ -112,8 +112,18 @@
       grid-column: 1 / -1;
     }
 
+    .field-hint {
+      margin-top: -10px;
+      margin-bottom: 16px;
+      padding-left: 120px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
     .task-card {
       height: 100%;
+      min-height: 230px;
       transition: all 0.3s ease;
       cursor: pointer;
     }
@@ -127,6 +137,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .task-card-header {
@@ -154,6 +165,7 @@
       flex: 1;
       flex-direction: column;
       gap: 12px;
+      min-width: 0;
     }
 
     .task-remark {
@@ -172,9 +184,11 @@
       display: flex;
       height: 40px;
       align-items: center;
+      flex-shrink: 0;
       border-radius: 6px;
       background: #0f172a;
       padding: 0 10px;
+      overflow: hidden;
     }
 
     .countdown-text {
@@ -183,6 +197,9 @@
       font-size: 18px;
       font-weight: 700;
       line-height: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .countdown-text.is-urgent {
@@ -202,7 +219,8 @@
       display: flex;
       gap: 8px;
       justify-content: flex-end;
-      margin-top: 18px;
+      margin-top: auto;
+      padding-top: 16px;
     }
 
     .empty-state {
@@ -274,6 +292,10 @@
       .form-grid {
         grid-template-columns: 1fr;
       }
+
+      .field-hint {
+        padding-left: 0;
+      }
     }
   </style>
 </head>
@@ -327,7 +349,21 @@
         <el-form label-width="120px">
           <div class="form-grid">
             <el-form-item label="目标 Chat ID">
-              <el-input v-model="form.chat_id" />
+              <el-select
+                v-model="form.chat_id"
+                allow-create
+                default-first-option
+                filterable
+                placeholder="选择已有 Chat ID 或手动输入"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="id in knownChatIds"
+                  :key="id"
+                  :label="id"
+                  :value="id"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item label="提醒类型">
               <el-radio-group v-model="form.is_recurring">
@@ -335,6 +371,9 @@
                 <el-radio :value="true">周期循环</el-radio>
               </el-radio-group>
             </el-form-item>
+            <div class="full-row field-hint">
+              Chat ID 是 Telegram 对话 ID，用来确定提醒发送给谁。给机器人发送 /myid 可获取；已有任务的 Chat ID 会自动出现在这里。
+            </div>
             <el-form-item class="full-row" label="内容">
               <el-input v-model="form.content" />
             </el-form-item>
@@ -571,6 +610,11 @@ createApp({
       }).length
     })
 
+    const knownChatIds = computed(() => {
+      const ids = tasks.value.map((task) => task.chat_id).filter(Boolean)
+      return [...new Set(ids)]
+    })
+
     const weekCompleted = computed(() =>
       tasks.value.filter((task) => {
         const created = parseTaskDate(task.created_at)
@@ -701,6 +745,7 @@ createApp({
       tasks,
       todayPending,
       weekCompleted,
+      knownChatIds,
       getCountdownState,
       Check,
       Clock,
