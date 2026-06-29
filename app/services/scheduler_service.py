@@ -5,12 +5,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from croniter import croniter
 from telegram.ext import Application
 
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.models.task import Task
+from app.services.backup_service import backup_service
+from app.services.notification_service import notification_service
+from app.services.settings_service import SettingsService
 from app.services.task_service import TaskService
 
 
@@ -21,6 +24,7 @@ class SchedulerService:
 
     def bind_bot(self, bot_app: Application) -> None:
         self.bot_app = bot_app
+        notification_service.bind_bot(bot_app)
 
     def start(self) -> None:
         if not self.scheduler.running:
@@ -35,6 +39,10 @@ class SchedulerService:
 
     def remove_task_job(self, task_id: int) -> None:
         self.scheduler.remove_job(self._job_id(task_id)) if self.scheduler.get_job(self._job_id(task_id)) else None
+
+    def remove_backup_job(self) -> None:
+        if self.scheduler.get_job("auto_full_backup"):
+            self.scheduler.remove_job("auto_full_backup")
 
     def schedule_task(self, task: Task) -> None:
         if task.status != "pending":
@@ -76,6 +84,24 @@ class SchedulerService:
             tasks = await TaskService.list_pending_tasks(db)
             for task in tasks:
                 self.schedule_task(task)
+        await self.reload_backup_job()
+
+    async def reload_backup_job(self) -> None:
+        self.remove_backup_job()
+        async with AsyncSessionLocal() as db:
+            values = await SettingsService.get_all(db)
+        if values.get("backup_enabled", "false").lower() != "true":
+            return
+        cron_expr = values.get("backup_cron") or "0 3 * * *"
+        if not croniter.is_valid(cron_expr):
+            return
+        minute, hour, day, month, weekday = cron_expr.split()
+        trigger = CronTrigger(minute=minute, hour=hour, day=day, month=month, day_of_week=weekday, timezone=settings.scheduler_timezone)
+        self.scheduler.add_job(self.send_auto_backup, trigger=trigger, id="auto_full_backup", replace_existing=True)
+
+    async def send_auto_backup(self) -> None:
+        async with AsyncSessionLocal() as db:
+            await backup_service.send_email_backup(db)
 
     async def push_task_reminder(self, task_id: int) -> None:
         if self.bot_app is None:
@@ -86,14 +112,7 @@ class SchedulerService:
             if not task or task.status != "pending":
                 return
 
-            msg = f"⚠️ 提醒: {task.content}\n📝 备注: {task.remarks or '无'}"
-            keyboard = InlineKeyboardMarkup(
-                [[
-                    InlineKeyboardButton("✅ 已完成 (Done)", callback_data=f"done_{task.id}"),
-                    InlineKeyboardButton("⏳ 稍后提醒 (Snooze)", callback_data=f"snooze_{task.id}"),
-                ]]
-            )
-            await self.bot_app.bot.send_message(chat_id=task.chat_id, text=msg, reply_markup=keyboard)
+            await notification_service.send_task_reminder(task)
 
 
 scheduler_service = SchedulerService()

@@ -331,7 +331,40 @@
       </div>
     </header>
 
-    <section v-if="!authed" class="auth-wrap">
+    <section v-if="!setupChecked" class="auth-wrap">
+      <el-card class="auth-card">
+        <template #header>正在检查</template>
+        <el-skeleton :rows="4" animated />
+      </el-card>
+    </section>
+
+    <section v-else-if="!configured" class="auth-wrap">
+      <el-card class="auth-card">
+        <template #header>首次设置</template>
+        <el-form label-width="120px">
+          <el-form-item label="系统名称">
+            <el-input v-model="setupForm.app_name" />
+          </el-form-item>
+          <el-form-item label="时区">
+            <el-input v-model="setupForm.scheduler_timezone" placeholder="Asia/Shanghai" />
+          </el-form-item>
+          <el-form-item label="Bot Token">
+            <el-input v-model="setupForm.telegram_bot_token" show-password placeholder="从 BotFather 获取" />
+          </el-form-item>
+          <el-form-item label="管理员账号">
+            <el-input v-model="setupForm.web_username" />
+          </el-form-item>
+          <el-form-item label="管理员密码">
+            <el-input v-model="setupForm.web_password" type="password" show-password />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="saveInitialSetup">完成设置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-card>
+    </section>
+
+    <section v-else-if="!authed" class="auth-wrap">
       <el-card class="auth-card">
         <template #header>登录</template>
         <el-form label-width="90px">
@@ -349,6 +382,18 @@
     </section>
 
     <section v-else>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <el-radio-group v-model="activeView">
+            <el-radio-button label="tasks">任务</el-radio-button>
+            <el-radio-button label="channels">通知渠道</el-radio-button>
+            <el-radio-button label="backup">备份恢复</el-radio-button>
+            <el-radio-button label="settings">系统设置</el-radio-button>
+          </el-radio-group>
+        </div>
+      </div>
+
+      <template v-if="activeView==='tasks'">
       <div class="toolbar">
         <div class="toolbar-left">
           <el-input v-model="chatId" placeholder="Chat ID 可选" style="width: 200px" />
@@ -399,6 +444,22 @@
             </el-form-item>
             <el-form-item class="full-row" label="备注">
               <el-input v-model="form.remarks" />
+            </el-form-item>
+            <el-form-item class="full-row" label="通知渠道">
+              <el-select
+                v-model="form.channel_ids"
+                multiple
+                clearable
+                placeholder="不选则默认发送到目标 Chat ID"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="c in enabledChannels"
+                  :key="c.id"
+                  :label="`${c.name}（${channelTypeText(c.channel_type)}）`"
+                  :value="c.id"
+                />
+              </el-select>
             </el-form-item>
             <el-form-item v-if="!form.is_recurring" label="提醒时间">
               <el-date-picker
@@ -527,12 +588,144 @@
               <el-option value="completed" label="completed" />
             </el-select>
           </el-form-item>
+          <el-form-item label="通知渠道">
+            <el-select v-model="edit.form.channel_ids" multiple clearable style="width: 100%">
+              <el-option
+                v-for="c in enabledChannels"
+                :key="c.id"
+                :label="`${c.name}（${channelTypeText(c.channel_type)}）`"
+                :value="c.id"
+              />
+            </el-select>
+          </el-form-item>
         </el-form>
         <template #footer>
           <el-button @click="edit.visible=false">取消</el-button>
           <el-button type="primary" @click="saveEdit">保存</el-button>
         </template>
       </el-dialog>
+      </template>
+
+      <template v-if="activeView==='channels'">
+        <el-card class="panel-card">
+          <template #header>新增通知渠道</template>
+          <el-form label-width="120px">
+            <div class="form-grid">
+              <el-form-item label="名称">
+                <el-input v-model="channelForm.name" placeholder="例如：运营群" />
+              </el-form-item>
+              <el-form-item label="类型">
+                <el-select v-model="channelForm.channel_type">
+                  <el-option label="Telegram" value="telegram" />
+                  <el-option label="飞书机器人" value="feishu" />
+                </el-select>
+              </el-form-item>
+              <el-form-item v-if="channelForm.channel_type==='telegram'" label="Chat ID">
+                <el-input v-model="channelForm.config.chat_id" placeholder="给机器人发送 /myid 获取" />
+              </el-form-item>
+              <template v-else>
+                <el-form-item class="full-row" label="Webhook">
+                  <el-input v-model="channelForm.config.webhook_url" placeholder="飞书自定义机器人 Webhook 地址" />
+                </el-form-item>
+                <el-form-item class="full-row" label="签名密钥">
+                  <el-input v-model="channelForm.config.secret" show-password placeholder="未开启签名可留空" />
+                </el-form-item>
+              </template>
+              <el-form-item label="启用">
+                <el-switch v-model="channelForm.enabled" />
+              </el-form-item>
+            </div>
+            <el-button type="success" @click="saveChannel">保存渠道</el-button>
+          </el-form>
+        </el-card>
+
+        <el-table :data="channels" style="width: 100%">
+          <el-table-column prop="name" label="名称" />
+          <el-table-column label="类型">
+            <template #default="{ row }">{{ channelTypeText(row.channel_type) }}</template>
+          </el-table-column>
+          <el-table-column label="状态">
+            <template #default="{ row }">
+              <el-tag :type="row.enabled ? 'success' : 'info'">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="220">
+            <template #default="{ row }">
+              <el-button size="small" @click="editChannel(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="removeChannel(row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+
+      <template v-if="activeView==='backup'">
+        <el-card class="panel-card">
+          <template #header>邮箱自动备份</template>
+          <el-form label-width="130px">
+            <div class="form-grid">
+              <el-form-item label="开启自动备份">
+                <el-switch v-model="settingsForm.backup_enabled" active-value="true" inactive-value="false" />
+              </el-form-item>
+              <el-form-item label="备份时间">
+                <el-input v-model="settingsForm.backup_cron" placeholder="0 3 * * *" />
+              </el-form-item>
+              <el-form-item label="收件邮箱">
+                <el-input v-model="settingsForm.backup_email_to" />
+              </el-form-item>
+              <el-form-item label="SMTP 主机">
+                <el-input v-model="settingsForm.smtp_host" />
+              </el-form-item>
+              <el-form-item label="SMTP 端口">
+                <el-input v-model="settingsForm.smtp_port" />
+              </el-form-item>
+              <el-form-item label="发件邮箱">
+                <el-input v-model="settingsForm.smtp_from_email" />
+              </el-form-item>
+              <el-form-item label="SMTP 账号">
+                <el-input v-model="settingsForm.smtp_username" />
+              </el-form-item>
+              <el-form-item label="SMTP 密码">
+                <el-input v-model="settingsForm.smtp_password" show-password />
+              </el-form-item>
+              <el-form-item label="TLS 加密">
+                <el-switch v-model="settingsForm.smtp_use_tls" active-value="true" inactive-value="false" />
+              </el-form-item>
+            </div>
+            <el-button type="primary" @click="saveSettings">保存备份设置</el-button>
+            <el-button @click="sendBackupNow">立即发送备份</el-button>
+            <el-button @click="downloadBackup">下载全量备份</el-button>
+            <el-upload :auto-upload="false" :show-file-list="false" :on-change="restoreBackup" accept=".json" style="display:inline-block;margin-left:12px">
+              <el-button type="warning">覆盖恢复</el-button>
+            </el-upload>
+          </el-form>
+        </el-card>
+      </template>
+
+      <template v-if="activeView==='settings'">
+        <el-card class="panel-card">
+          <template #header>系统设置</template>
+          <el-form label-width="130px">
+            <div class="form-grid">
+              <el-form-item label="系统名称">
+                <el-input v-model="settingsForm.app_name" />
+              </el-form-item>
+              <el-form-item label="时区">
+                <el-input v-model="settingsForm.scheduler_timezone" />
+              </el-form-item>
+              <el-form-item label="Bot Token">
+                <el-input v-model="settingsForm.telegram_bot_token" show-password />
+              </el-form-item>
+              <el-form-item label="管理员账号">
+                <el-input v-model="settingsForm.web_username" />
+              </el-form-item>
+              <el-form-item label="管理员密码">
+                <el-input v-model="settingsForm.web_password" show-password />
+              </el-form-item>
+            </div>
+            <el-button type="primary" @click="saveSettings">保存系统设置</el-button>
+          </el-form>
+        </el-card>
+      </template>
     </section>
   </main>
 </div>
@@ -545,7 +738,26 @@ createApp({
   setup() {
     const auth = ref(localStorage.getItem('sn_basic_auth') || '')
     const authed = ref(!!auth.value)
+    const setupChecked = ref(false)
+    const configured = ref(false)
+    const activeView = ref('tasks')
     const login = ref({ username: '', password: '' })
+    const setupForm = ref({
+      app_name: 'Smart Notifier',
+      scheduler_timezone: 'Asia/Shanghai',
+      telegram_bot_token: '',
+      web_username: 'admin',
+      web_password: '',
+    })
+    const settingsForm = ref({})
+    const channels = ref([])
+    const channelForm = ref({
+      id: null,
+      name: '',
+      channel_type: 'telegram',
+      config: { chat_id: '', webhook_url: '', secret: '' },
+      enabled: true,
+    })
     const chatId = ref('')
     const statusFilter = ref('')
     const tasks = ref([])
@@ -565,11 +777,12 @@ createApp({
       month_day: 1,
       year_mmdd: '01-01',
       interval_days: 3,
+      channel_ids: [],
     })
     const edit = ref({
       visible: false,
       taskId: null,
-      form: { content: '', remarks: '', trigger_time: '', cron_expr: '', status: 'pending' },
+      form: { content: '', remarks: '', trigger_time: '', cron_expr: '', status: 'pending', channel_ids: [] },
     })
 
     onUnmounted(() => {
@@ -585,10 +798,27 @@ createApp({
       return fetch(url, Object.assign({}, options, { headers }))
     }
 
+    const checkSetup = async () => {
+      try {
+        const res = await fetch('/api/setup/status')
+        const data = await res.json()
+        configured.value = !!data.configured
+        if (!configured.value) authed.value = false
+      } finally {
+        setupChecked.value = true
+      }
+    }
+
     const logout = () => {
       localStorage.removeItem('sn_basic_auth')
       auth.value = ''
       authed.value = false
+    }
+
+    const channelTypeText = (type) => {
+      if (type === 'feishu') return '飞书'
+      if (type === 'telegram') return 'Telegram'
+      return type
     }
 
     const parseTaskDate = (value) => {
@@ -749,6 +979,8 @@ createApp({
       return [...new Set(ids)]
     })
 
+    const enabledChannels = computed(() => channels.value.filter((item) => item.enabled))
+
     const weekCompleted = computed(() =>
       tasks.value.filter((task) => {
         const created = parseTaskDate(task.created_at)
@@ -763,7 +995,23 @@ createApp({
       auth.value = token
       localStorage.setItem('sn_basic_auth', token)
       authed.value = true
-      await load()
+      await afterLoginLoad()
+    }
+
+    const saveInitialSetup = async () => {
+      if (!setupForm.value.telegram_bot_token || !setupForm.value.web_password) {
+        return ElementPlus.ElMessage.error('请填写 Bot Token 和管理员密码')
+      }
+      const res = await fetch('/api/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(setupForm.value),
+      })
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      configured.value = true
+      login.value.username = setupForm.value.web_username
+      login.value.password = setupForm.value.web_password
+      ElementPlus.ElMessage.success('初始化完成，请登录')
     }
 
     const recurringExpr = () => {
@@ -807,6 +1055,7 @@ createApp({
           trigger_time: form.value.is_recurring ? null : form.value.once_time,
           cron_expr: form.value.is_recurring ? recurringExpr() : null,
           chat_id: form.value.chat_id,
+          channel_ids: form.value.channel_ids,
         }
         const res = await authFetch('/api/tasks', {
           method: 'POST',
@@ -817,6 +1066,8 @@ createApp({
         if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
         await load()
         ElementPlus.ElMessage.success('创建成功')
+        form.value.content = ''
+        form.value.remarks = ''
       } catch (e) {
         ElementPlus.ElMessage.error(e.message || '创建失败')
       }
@@ -830,6 +1081,7 @@ createApp({
         trigger_time: task.trigger_time || '',
         cron_expr: task.cron_expr || '',
         status: task.status || 'pending',
+        channel_ids: task.channel_ids || [],
       }
       edit.value.visible = true
     }
@@ -877,11 +1129,133 @@ createApp({
       ElementPlus.ElMessage.success('删除成功')
     }
 
-    if (authed.value) load()
+    const loadSettings = async () => {
+      const res = await authFetch('/api/settings')
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('设置加载失败')
+      settingsForm.value = await res.json()
+    }
+
+    const saveSettings = async () => {
+      const res = await authFetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settingsForm.value),
+      })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      settingsForm.value = await res.json()
+      ElementPlus.ElMessage.success('设置已保存')
+    }
+
+    const loadChannels = async () => {
+      const res = await authFetch('/api/channels')
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('渠道加载失败')
+      channels.value = await res.json()
+    }
+
+    const resetChannelForm = () => {
+      channelForm.value = {
+        id: null,
+        name: '',
+        channel_type: 'telegram',
+        config: { chat_id: '', webhook_url: '', secret: '' },
+        enabled: true,
+      }
+    }
+
+    const saveChannel = async () => {
+      if (!channelForm.value.name) return ElementPlus.ElMessage.error('请填写渠道名称')
+      const id = channelForm.value.id
+      const res = await authFetch(id ? `/api/channels/${id}` : '/api/channels', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(channelForm.value),
+      })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      await loadChannels()
+      resetChannelForm()
+      ElementPlus.ElMessage.success('渠道已保存')
+    }
+
+    const editChannel = (row) => {
+      channelForm.value = {
+        id: row.id,
+        name: row.name,
+        channel_type: row.channel_type,
+        config: Object.assign({ chat_id: '', webhook_url: '', secret: '' }, row.config || {}),
+        enabled: row.enabled,
+      }
+    }
+
+    const removeChannel = async (row) => {
+      try {
+        await ElementPlus.ElMessageBox.confirm(`确认删除渠道「${row.name}」吗？`, '删除渠道', { type: 'warning' })
+      } catch (e) {
+        return
+      }
+      const res = await authFetch(`/api/channels/${row.id}`, { method: 'DELETE' })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('删除失败')
+      await loadChannels()
+      ElementPlus.ElMessage.success('渠道已删除')
+    }
+
+    const sendBackupNow = async () => {
+      await saveSettings()
+      const res = await authFetch('/api/backup/send-now', { method: 'POST' })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      ElementPlus.ElMessage.success('备份邮件已发送')
+    }
+
+    const downloadBackup = async () => {
+      const res = await authFetch('/api/backup/export')
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error('导出失败')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'smart-notifier-backup.json'
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+
+    const restoreBackup = async (uploadFile) => {
+      try {
+        await ElementPlus.ElMessageBox.confirm('覆盖恢复会替换任务、渠道和系统设置，确认继续吗？', '覆盖恢复', { type: 'warning' })
+      } catch (e) {
+        return
+      }
+      const body = new FormData()
+      body.append('file', uploadFile.raw)
+      const res = await authFetch('/api/backup/restore', { method: 'POST', body })
+      if (res.status === 401) return logout()
+      if (!res.ok) return ElementPlus.ElMessage.error(await res.text())
+      await afterLoginLoad()
+      ElementPlus.ElMessage.success('恢复完成')
+    }
+
+    const afterLoginLoad = async () => {
+      await Promise.all([load(), loadSettings(), loadChannels()])
+    }
+
+    checkSetup().then(() => {
+      if (authed.value && configured.value) afterLoginLoad()
+    })
 
     return {
       authed,
+      setupChecked,
+      configured,
+      activeView,
       login,
+      setupForm,
+      settingsForm,
+      saveInitialSetup,
       doLogin,
       logout,
       chatId,
@@ -890,6 +1264,17 @@ createApp({
       todayPending,
       weekCompleted,
       knownChatIds,
+      channels,
+      enabledChannels,
+      channelForm,
+      channelTypeText,
+      saveChannel,
+      editChannel,
+      removeChannel,
+      saveSettings,
+      sendBackupNow,
+      downloadBackup,
+      restoreBackup,
       getTaskTargetTime,
       getCountdownState,
       Check,

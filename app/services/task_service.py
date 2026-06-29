@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import json
 from zoneinfo import ZoneInfo
 
 from croniter import croniter
@@ -84,6 +85,7 @@ class TaskService:
             status="pending",
             snooze_count=0,
             chat_id=payload.chat_id,
+            channel_ids=json.dumps(payload.channel_ids or []),
         )
         db.add(task)
         await db.commit()
@@ -148,6 +150,7 @@ class TaskService:
         trigger_time: datetime | None = None,
         cron_expr: str | None = None,
         status: str | None = None,
+        channel_ids: list[int] | None = None,
     ) -> Task:
         if content is not None:
             task.content = content
@@ -159,6 +162,8 @@ class TaskService:
             task.cron_expr = cron_expr
         if status is not None:
             task.status = status
+        if channel_ids is not None:
+            task.channel_ids = json.dumps(channel_ids)
         await db.commit()
         await db.refresh(task)
         return task
@@ -202,6 +207,7 @@ class TaskService:
                     "status": t.status,
                     "snooze_count": t.snooze_count,
                     "chat_id": t.chat_id,
+                    "channel_ids": json.loads(t.channel_ids or "[]"),
                     "created_at": t.created_at.isoformat() if t.created_at else None,
                 }
             )
@@ -224,6 +230,7 @@ class TaskService:
                 "status": row.get("status", "pending"),
                 "snooze_count": int(row.get("snooze_count", 0)),
                 "chat_id": str(row.get("chat_id", "")),
+                "channel_ids": json.dumps(row.get("channel_ids", [])),
                 "created_at": datetime.fromisoformat(row["created_at"]) if row.get("created_at") else datetime.utcnow(),
             }
 

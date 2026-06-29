@@ -14,6 +14,8 @@ if str(ROOT_DIR) not in sys.path:
 
 from app.core.config import settings
 from app.db.base import Base
+from app.models.app_setting import AppSetting  # noqa: F401
+from app.models.notification_channel import NotificationChannel  # noqa: F401
 from app.models.task import Task  # noqa: F401
 
 config = context.config

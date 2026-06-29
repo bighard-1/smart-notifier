@@ -15,6 +15,7 @@ class Task(Base):
     is_recurring: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     trigger_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
     cron_expr: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    channel_ids: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     snooze_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     chat_id: Mapped[str] = mapped_column(String(64), nullable=False)

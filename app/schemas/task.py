@@ -10,6 +10,7 @@ class TaskCreate(BaseModel):
     trigger_time: datetime | None = None
     cron_expr: str | None = None
     chat_id: str
+    channel_ids: list[int] = []
 
 
 class TaskRead(BaseModel):
@@ -22,6 +23,7 @@ class TaskRead(BaseModel):
     status: str
     snooze_count: int
     chat_id: str
+    channel_ids: list[int] = []
     created_at: datetime
     reminder_type: str | None = None
     rule_text: str | None = None
@@ -37,3 +39,4 @@ class TaskUpdate(BaseModel):
     trigger_time: datetime | None = None
     cron_expr: str | None = None
     status: str | None = None
+    channel_ids: list[int] | None = None

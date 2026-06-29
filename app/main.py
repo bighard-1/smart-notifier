@@ -9,18 +9,24 @@ from fastapi.responses import FileResponse
 from app.api.routes import router as api_router
 from app.bot.handlers import build_application
 from app.core.config import settings
+from app.db.session import AsyncSessionLocal
 from app.services.scheduler_service import scheduler_service
+from app.services.settings_service import SettingsService
 
 logger = logging.getLogger(__name__)
 telegram_runner_task: asyncio.Task | None = None
 
 
 async def run_telegram_polling() -> None:
-    if not settings.telegram_bot_token:
-        logger.warning("TELEGRAM_BOT_TOKEN 未配置，跳过 Bot 启动")
-        return
+    token = ""
+    while not token:
+        async with AsyncSessionLocal() as db:
+            token = await SettingsService.get(db, "telegram_bot_token")
+        if not token:
+            logger.warning("TELEGRAM_BOT_TOKEN 未配置，等待 Web 初始化")
+            await asyncio.sleep(10)
 
-    bot_app = build_application(settings.telegram_bot_token)
+    bot_app = build_application(token)
     scheduler_service.bind_bot(bot_app)
 
     await bot_app.initialize()
